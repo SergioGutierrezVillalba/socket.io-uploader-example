@@ -1,0 +1,80 @@
+<html>
+    <head></head>
+    <body>
+        <input type="file" />
+        <script>
+            window.onload = function () {
+                let size = 0;
+                let bytesSent = 0;
+                let websocket = new WebSocket('ws://localhost:3000');
+                let connectionOpen = false;
+
+                websocket.onopen = function (event) {
+                    console.log('Connection open!')
+                    connectionOpen = true;
+                }
+
+                websocket.onmessage = function (event) {
+                    const message = JSON.parse(event.data);
+                    if(message && message.type) {
+                        if(message.type === 'PROGRESS') {
+                            bytesSent += message.data;
+                            let progress = (bytesSent / size) * 100;
+                            console.log(`PROGRESS: ${progress.toFixed(2)}`);
+                        }
+                    }
+                }
+
+                document.querySelector('input').addEventListener('change', function () {
+                    const reader = new FileReader();
+                    reader.onload = function () {
+                        const arrayBuffer = this.result;
+                        upload(arrayBuffer, websocket, connectionOpen);
+                    }
+                    reader.readAsArrayBuffer(this.files[0]);
+                }, false);
+
+                function upload (arrayBuffer, socket, connectionOpen) {
+
+                    console.log('uploading...');
+                    size = arrayBuffer.byteLength;
+                    let chunkLength = 4096;
+                    let offset = 0;
+
+                    console.log('size', size);
+                    console.log('chunks', Math.ceil(size / chunkLength));
+
+                    const nChunks = Math.ceil(size / chunkLength);
+                    let chunk;
+                    let progress = 0;
+
+                    // const progressInterval = setInterval(() => {
+                    //     console.log(progress);
+                    // }, 1000);
+
+                    for(let i = 0; i < nChunks; i++) {
+                        if(chunkLength + offset > size) {
+                            chunkLength = size - offset;
+                        }
+                        chunk = new Uint8Array(arrayBuffer, offset, chunkLength);
+
+                        if(connectionOpen) {
+                            if(offset < size) {
+                                offset += chunkLength;
+                                // console.log(`Sending chunk from ${offset} byte.`);
+                                websocket.send(chunk);
+                                progress = (offset / size) * 100;
+                            }
+                        } else {
+                            console.log('connection is close');
+                            break;
+                        }
+                    }
+
+                    // clearInterval(progressInterval);
+                    console.log('file sent.');
+                }
+            }
+        </script>
+    </body>
+</html>
