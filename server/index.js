@@ -10,7 +10,9 @@ ws.on('connection', function (socket) {
     socket.on('message', function (message) {
         const chunk = message;
         // TODO: Send an object with more data instead an only raw arraybuffer
-        socket.send(`{ "type": "PROGRESS", "data": ${Buffer.from(chunk).length}}`);
+        // TODO: Emit progress only every n seconds and not every chunk
+        // TODO: Using buffer from to see the length, bad idea?
+        // socket.send(JSON.stringify({ type: "PROGRESS", "data": Buffer.from(chunk).length}));
         fs.appendFileSync('video.mp4', chunk);
     });
 
